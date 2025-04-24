@@ -8,8 +8,43 @@ export default function Home() {
 
   const handleGenerate = async () => {
     setIsGenerating(true);
-    // TODO: Implement AI generation logic
-    setTimeout(() => setIsGenerating(false), 1000);
+    const originalContent = content;
+    
+    try {
+      const response = await fetch('/api/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: originalContent }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to generate');
+      }
+
+      // Clear the existing content before streaming
+      setContent('');
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          
+          const chunk = decoder.decode(value);
+          setContent(prev => prev + chunk);
+        }
+      }
+    } catch (error) {
+      console.error('Error generating content:', error);
+      // Restore original content if there's an error
+      setContent(originalContent);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
